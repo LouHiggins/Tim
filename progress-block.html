@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progress Block Prototype</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .progress-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
+        }
+        .progress-circle {
+            fill: none;
+            stroke: #e0e0e0;
+            stroke-width: 10;
+        }
+        .progress-value {
+            fill: none;
+            stroke: #6200ea;
+            stroke-width: 10;
+            stroke-linecap: round;
+            transition: stroke-dasharray 0.3s ease;
+        }
+        .progress-text {
+            font-size: 24px;
+            font-weight: bold;
+            fill: #6200ea;
+        }
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .control {
+            margin: 10px 0;
+        }
+        label {
+            margin-right: 10px;
+        }
+        input[type="number"] {
+            width: 60px;
+        }
+        @media (orientation: landscape) {
+            body {
+                flex-direction: row;
+            }
+            .controls {
+                margin-top: 0;
+                margin-left: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-container">
+        <svg width="200" height="200" viewBox="0 0 200 200">
+            <circle class="progress-circle" cx="100" cy="100" r="90"></circle>
+            <path class="progress-value" d=""></path>
+            <text class="progress-text" x="100" y="100" text-anchor="middle" dominant-baseline="central">0%</text>
+        </svg>
+    </div>
+    <div class="controls">
+        <div class="control">
+            <label for="value">Value:</label>
+            <input type="number" id="value" min="0" max="100" value="0">
+        </div>
+        <div class="control">
+            <label for="animate">Animate:</label>
+            <input type="checkbox" id="animate">
+        </div>
+        <div class="control">
+            <label for="hide">Hide:</label>
+            <input type="checkbox" id="hide">
+        </div>
+    </div>
+    <script>
+        class ProgressBlock {
+            constructor(container) {
+                this.container = container;
+                this.svg = container.querySelector('svg');
+                this.circle = container.querySelector('.progress-circle');
+                this.path = container.querySelector('.progress-value');
+                this.text = container.querySelector('.progress-text');
+                this.value = 0;
+                this.isAnimated = false;
+                this.isHidden = false;
+                this.animationInterval = null;
+            }
+
+            setValue(value) {
+                this.value = Math.min(100, Math.max(0, value));
+                this.updateProgress();
+            }
+
+            setAnimated(isAnimated) {
+                this.isAnimated = isAnimated;
+                if (this.isAnimated) {
+                    this.startAnimation();
+                } else {
+                    this.stopAnimation();
+                }
+            }
+
+            setHidden(isHidden) {
+                this.isHidden = isHidden;
+                this.container.style.display = this.isHidden ? 'none' : 'block';
+            }
+
+            updateProgress() {
+                const radius = 90;
+                const circumference = 2 * Math.PI * radius;
+                const offset = circumference - (this.value / 100) * circumference;
+                this.path.setAttribute('d', this.describeArc(100, 100, 90, 0, this.value * 3.6));
+                this.path.style.strokeDasharray = `${circumference} ${circumference}`;
+                this.path.style.strokeDashoffset = offset;
+                this.text.textContent = `${this.value}%`;
+            }
+
+            startAnimation() {
+                this.stopAnimation();
+                this.animationInterval = setInterval(() => {
+                    this.path.setAttribute('transform', `rotate(${Date.now() / 10 % 360} 100 100)`);
+                }, 16);
+            }
+
+            stopAnimation() {
+                if (this.animationInterval) {
+                    clearInterval(this.animationInterval);
+                    this.animationInterval = null;
+                    this.path.setAttribute('transform', '');
+                }
+            }
+
+            polarToCartesian(centerX, centerY, radius, angleInDegrees) {
+                const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
+                return {
+                    x: centerX + (radius * Math.cos(angleInRadians)),
+                    y: centerY + (radius * Math.sin(angleInRadians))
+                };
+            }
+
+            describeArc(x, y, radius, startAngle, endAngle) {
+                const start = this.polarToCartesian(x, y, radius, endAngle);
+                const end = this.polarToCartesian(x, y, radius, startAngle);
+                const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+                return [
+                    "M", start.x, start.y,
+                    "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y
+                ].join(" ");
+            }
+        }
+
+        const progressContainer = document.querySelector('.progress-container');
+        const progressBlock = new ProgressBlock(progressContainer);
+
+        const valueInput = document.getElementById('value');
+        const animateCheckbox = document.getElementById('animate');
+        const hideCheckbox = document.getElementById('hide');
+
+        valueInput.addEventListener('input', (e) => {
+            progressBlock.setValue(parseInt(e.target.value, 10));
+        });
+
+        animateCheckbox.addEventListener('change', (e) => {
+            progressBlock.setAnimated(e.target.checked);
+        });
+
+        hideCheckbox.addEventListener('change', (e) => {
+            progressBlock.setHidden(e.target.checked);
+        });
+        </script>
+</body>
+</html>
